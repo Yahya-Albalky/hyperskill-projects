@@ -1,0 +1,167 @@
+def apply_command():
+    if input_ == "/exit":
+        print("Bye!")
+        return "exit"
+    elif input_ == "/help":
+        print("The program calculates the result of an expression")
+    else:
+        print("Unknown command")
+
+
+def store_variable():
+    global variables
+    identifier, assignment = input_.replace(" ", "").split("=", 1)
+    if not is_latin(identifier):
+        print("Invalid identifier")
+    elif assignment.isdigit():
+        variables[identifier] = int(assignment)
+    elif assignment in variables.keys():
+        variables[identifier] = variables[assignment]
+    elif not is_latin(assignment):
+        print("Invalid assignment")
+    else:
+        print("Unknown variable")
+
+
+def result():
+    if not operator_bet_operands() \
+       or is_operator(input_.replace(" ", "")[-1]) \
+       or precedence_level((input_.replace(" ", "")[0])) > 1 \
+       or not input_modified() \
+       or not notation_fixed():
+        return "Invalid expression"
+    return calculate_result()
+
+
+def operator_bet_operands():
+    for i in range(0, len(input_.split()) - 1):
+        if (input_.split()[i][-1].isdigit() or
+           is_latin(input_.split()[i][-1])) \
+           and (input_.split()[i + 1][0].isdigit() or
+           is_latin(input_.split()[i + 1][0])):
+            return False
+    return True
+
+
+def is_latin(word):
+    for char in word:
+        if not (65 <= ord(char) <= 90 or 97 <= ord(char) <= 122):
+            return False
+    return True
+
+
+def is_operator(element):
+    if element == "^" \
+       or element == "*" or element == "/" \
+       or element == "+" or element == "-":
+        return True
+    return False
+
+
+def input_modified():
+    global input_, infix_notation
+    input_ = input_.replace(" ", "")
+    while "--" in input_ or "++" in input_ \
+          or "+-" in input_ or "-+" in input_:
+        input_ = input_.replace("--", "+")
+        input_ = input_.replace("++", "+")
+        input_ = input_.replace("+-", "-")
+        input_ = input_.replace("-+", "-")
+    input_ = list(input_)
+    if is_operator(input_[0]):
+        input_.insert(0, "0")
+    for i in range(0, len(input_) - 1):
+        if is_operator(input_[i]) and is_operator(input_[i + 1]):
+            return False
+        if input_[i].isdigit() \
+           and input_[i + 1].isdigit() \
+           or is_latin(input_[i]) \
+           and is_latin(input_[i + 1]):
+            input_[i + 1] = input_[i] + input_[i + 1]
+            input_[i] = ""
+    while "" in input_:
+        input_.remove("")
+    infix_notation = input_
+    return True
+
+
+def notation_fixed():
+    global postfix_notation
+    postfix_notation = []
+    stack = []
+    for element in infix_notation:
+        if element.isdigit() or is_latin(element):
+            postfix_notation.append(element)
+        elif is_operator(element):
+            while stack:
+                if stack[-1] == "(" \
+                   or precedence_level(element) > precedence_level(stack[-1]):
+                    break
+                postfix_notation.append(stack.pop())
+            stack.append(element)
+        elif element == "(":
+            stack.append(element)
+        elif element == ")":
+            while True:
+                if not stack:
+                    return False
+                if stack[-1] == "(":
+                    stack.pop()
+                    break
+                postfix_notation.append(stack.pop())
+        else:
+            return False
+    while stack:
+        postfix_notation.append(stack.pop())
+    return True
+
+
+def precedence_level(operator):
+    if operator == "^":
+        return 3
+    elif operator == "*" or operator == "/":
+        return 2
+    elif operator == "-" or operator == "+":
+        return 1
+    else:
+        return 0
+
+
+def calculate_result():
+    stack = []
+    for element in postfix_notation:
+        if element.isdigit():
+            stack.append(int(element))
+        elif is_latin(element):
+            if element in variables.keys():
+                stack.append(variables[element])
+            else:
+                return "Unknown variable"
+        elif element == "(":
+            return "Invalid expression"
+        else:
+            if element == "^":
+                result = stack.pop(-2) ** stack.pop()
+            elif element == "*":
+                result = stack.pop() * stack.pop()
+            elif element == "/":
+                result = stack.pop(-2) // stack.pop()
+            elif element == "+":
+                result = stack.pop() + stack.pop()
+            else:
+                result = stack.pop(-2) - stack.pop()
+            stack.append(result)
+    return stack[0]
+
+variables = dict()
+while True:
+    input_ = input()
+    if input_ == "":
+        continue
+    if input_.startswith("/"):
+        if apply_command() == "exit":
+            break
+    elif "=" in input_:
+        store_variable()
+    else:
+        print(result())
